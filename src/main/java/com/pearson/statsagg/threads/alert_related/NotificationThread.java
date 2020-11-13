@@ -538,12 +538,50 @@ public class NotificationThread implements Runnable  {
         }
 
     }
+
+    public JsonObject buildPagerDutyAcknowledgeEvent() {
+        if ((alert_ == null) || ((alertLevel_ != Alert.CAUTION) && (alertLevel_ != Alert.DANGER))) {
+            logger.error("Failed to create PagerDuty Acknowledge event.");
+            return null;
+        }
+        
+        String warningLevelString = null;
+        String pdSeverity = null;
+        if (alertLevel_ == Alert.CAUTION) {
+            warningLevelString = "Caution";
+            pdSeverity = "warning";
+        } else if (alertLevel_ == Alert.DANGER) {
+            warningLevelString = "Danger"; 
+            pdSeverity = "critical";
+        }
+        
+        String summary = "StatsAgg Alert, " + warningLevelString + ", Name=\"" + alert_.getName() + "\"";
+
+        JsonObject json = new JsonObject();
+        json.addProperty("dedup_key", alert_.getId().toString());
+        
+        JsonObject payload = new JsonObject();
+        json.add("payload",payload);
+        payload.addProperty("summary",summary);
+        payload.addProperty("source", "See Custom Details");
+        payload.addProperty("severity", pdSeverity);
+        
+        json.addProperty("event_action", "acknowledge");
+        
+        return json;
+    }
     
     public void sendPagerDutyEvent(String routingKey, JsonObject event) {
         
         if (routingKey == null) {
             String cleanSubject = StringUtilities.removeNewlinesFromString(event.getAsJsonObject("payload").get("summary").toString(), ' ');
             logger.debug("Message=\"Failed to send PagerDuty event. No valid API keys.\", Subject=\"" + cleanSubject + "\"");
+            return;
+        }
+
+        if (event == null) {
+            String cleanSubject = StringUtilities.removeNewlinesFromString(event.getAsJsonObject("payload").get("summary").toString(), ' ');
+            logger.debug("Message=\"Failed to send pager duty event. Pager Duty event missing.\", Subject=\"" + cleanSubject + "\"");
             return;
         }
         

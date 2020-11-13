@@ -1,5 +1,7 @@
 package com.pearson.statsagg.web_ui;
 
+import com.google.gson.JsonObject;
+import com.pearson.statsagg.configuration.ApplicationConfiguration;
 import com.pearson.statsagg.database_objects.alerts.AlertsLogic;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import com.pearson.statsagg.database_objects.suspensions.Suspension;
@@ -21,10 +23,12 @@ import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTag;
 import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTagsDao;
 import com.pearson.statsagg.database_objects.notification_groups.NotificationGroupsDao;
 import com.pearson.statsagg.globals.GlobalVariables;
+import com.pearson.statsagg.threads.alert_related.NotificationThread;
 import com.pearson.statsagg.utilities.core_utils.KeyValue;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
 import com.pearson.statsagg.utilities.db_utils.DatabaseUtils;
 import java.sql.Connection;
+import java.util.HashMap;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -150,6 +154,7 @@ public class Alerts extends HttpServlet {
                 try {
                     Boolean isAcknowledged_Boolean = Boolean.parseBoolean(isAcknowledged_String);
                     AlertsLogic.changeAlertAcknowledge(alertId, isAcknowledged_Boolean);
+                    sendPagerDutyAcknowledgeRequest(alertId);
                 }
                 catch (Exception e) {
                     logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
@@ -587,6 +592,34 @@ public class Alerts extends HttpServlet {
         }
         
         return isAcknowledged;
+    }
+
+    private void sendPagerDutyAcknowledgeRequest(Integer alertId) {
+        
+        if (!ApplicationConfiguration.isPagerdutyIntegrationEnabled()) return;
+        
+        Alert alert = AlertsDao.getAlert(DatabaseConnections.getConnection(), true, alertId);
+        
+        if (alert == null) return;
+        
+        int alertLevel;
+        int notificationGroupId;
+        if (alert.isDangerAlertActive()){
+            alertLevel = Alert.DANGER;
+            notificationGroupId = alert.getDangerNotificationGroupId();
+        } 
+        else if (alert.isCautionAlertActive()) {
+            alertLevel = Alert.CAUTION;
+            notificationGroupId = alert.getCautionNotificationGroupId();
+        }
+        else {
+            return;
+        }
+        
+        NotificationThread notificationThread = new NotificationThread(alert, alertLevel, new ArrayList<String>(), new HashMap<>(), new HashMap<>(), false, false, "" );
+        JsonObject event = notificationThread.buildPagerDutyAcknowledgeEvent();
+        String routingKey = NotificationThread.getPagerdutyRoutingKeyForAlert(notificationGroupId);
+        notificationThread.sendPagerDutyEvent(routingKey, event);
     }
     
 }
