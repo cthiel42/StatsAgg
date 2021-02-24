@@ -13,8 +13,8 @@ import com.pearson.statsagg.globals.DatabaseConnections;
 import com.pearson.statsagg.database_objects.alerts.Alert;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroup;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroupsDao;
-import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTag;
-import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTagsDao;
+import com.pearson.statsagg.database_objects.metric_groups.MetricGroupTag;
+import com.pearson.statsagg.database_objects.metric_groups.MetricGroupTagsDao;
 import com.pearson.statsagg.configuration.ApplicationConfiguration;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
 import java.sql.Timestamp;
@@ -85,7 +85,7 @@ public class AlertPreview extends HttpServlet {
         
         PrintWriter out = null;
     
-        Alert alert = CreateAlert.getAlertFromAlertParameters(request, false);
+        Alert alert = CreateAlert.getAlertFromAlertParameters(request);
         String alertBody = getExampleEmailAlert(request.getParameter("WarningLevel"), alert, request.getParameter("MetricGroupName"));        
         
         try {  
@@ -149,12 +149,8 @@ public class AlertPreview extends HttpServlet {
 
         MetricGroup metricGroup = MetricGroupsDao.getMetricGroup(DatabaseConnections.getConnection(), true, metricGroupName);
         List<MetricGroupTag> metricGroupTags = new ArrayList<>();
-        if (metricGroup != null) {
-            metricGroupTags = MetricGroupTagsDao.getMetricGroupTagsByMetricGroupId(DatabaseConnections.getConnection(), true, metricGroup.getId());
-        }
-        else {
-            metricGroup = new MetricGroup(88888, metricGroupName, metricGroupName.toUpperCase(), "");
-        }
+        if (metricGroup != null) metricGroupTags = MetricGroupTagsDao.getMetricGroupTagsByMetricGroupId(DatabaseConnections.getConnection(), true, metricGroup.getId());
+        else metricGroup = new MetricGroup(88888, metricGroupName, metricGroupName.toUpperCase(), "", null, null, null, null, null);
 
         List<String> metricKeys = new ArrayList<>();
         metricKeys.add("preview.metric1");
@@ -164,7 +160,7 @@ public class AlertPreview extends HttpServlet {
         Map<String,BigDecimal> alertMetricValues = generateFakeMetricValues(warningLevel, alert);
         
         if (warningLevel.equalsIgnoreCase("caution")) {
-            boolean isAlertValidAndEnabled = alert.isCautionAlertCriteriaValid() && (alert.isCautionEnabled() != null) && alert.isCautionEnabled();
+            boolean isAlertValidAndEnabled = alert.isCautionAlertCriteriaValid().isValid() && (alert.isCautionEnabled() != null) && alert.isCautionEnabled();
             
             if (isAlertValidAndEnabled) {
                 NotificationThread notificationThread = new NotificationThread(alert, Alert.CAUTION, metricKeys, alertMetricValues, new ConcurrentHashMap<>(),
@@ -178,7 +174,7 @@ public class AlertPreview extends HttpServlet {
         }
         
         if (warningLevel.equalsIgnoreCase("danger")) {
-            boolean isAlertValidAndEnabled = alert.isDangerAlertCriteriaValid() && (alert.isDangerEnabled() != null) && alert.isDangerEnabled();
+            boolean isAlertValidAndEnabled = alert.isDangerAlertCriteriaValid().isValid() && (alert.isDangerEnabled() != null) && alert.isDangerEnabled();
             
             if (isAlertValidAndEnabled) {
                 NotificationThread emailThread = new NotificationThread(alert, Alert.DANGER, metricKeys, alertMetricValues, new ConcurrentHashMap<>(),

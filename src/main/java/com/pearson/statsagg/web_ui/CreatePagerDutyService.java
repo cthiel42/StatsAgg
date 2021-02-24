@@ -2,7 +2,7 @@ package com.pearson.statsagg.web_ui;
 
 import com.pearson.statsagg.database_objects.pagerduty_services.PagerdutyService;
 import com.pearson.statsagg.database_objects.pagerduty_services.PagerdutyServicesDao;
-import com.pearson.statsagg.database_objects.pagerduty_services.PagerdutyServicesLogic;
+import com.pearson.statsagg.database_objects.pagerduty_services.PagerdutyServicesDaoWrapper;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import java.io.PrintWriter;
 import javax.servlet.http.HttpServlet;
@@ -161,6 +161,8 @@ public class CreatePagerDutyService extends HttpServlet {
             htmlBody.append("<input type=\"hidden\" name=\"Old_Name\" value=\"").append(StatsAggHtmlFramework.htmlEncode(pagerdutyService.getName(), true)).append("\">");
         }
         
+        
+        // name
         htmlBody.append(
             "       <div class=\"form-group\">\n" +
             "         <label class=\"label_small_margin\">PagerDuty service name</label>\n" +
@@ -170,8 +172,11 @@ public class CreatePagerDutyService extends HttpServlet {
             htmlBody.append("value=\"").append(StatsAggHtmlFramework.htmlEncode(pagerdutyService.getName(), true)).append("\"");
         }
 
+        htmlBody.append(">\n</div>\n");
+        
+                   
+        // description
         htmlBody.append(      
-            ">\n</div>\n" +
             "<div class=\"form-group\">\n" +
             "  <label class=\"label_small_margin\">Description</label>\n" +
             "  <textarea class=\"form-control-statsagg\" rows=\"3\" name=\"Description\" id=\"Description\" >");
@@ -180,9 +185,11 @@ public class CreatePagerDutyService extends HttpServlet {
             htmlBody.append(StatsAggHtmlFramework.htmlEncode(pagerdutyService.getDescription(), true));
         }
 
+        htmlBody.append("</textarea>\n" + "</div>\n");
+        
+        
+        // pagerduty service routing key
         htmlBody.append(
-            "</textarea>\n" +
-            "</div>\n" +
             "<div class=\"form-group\">\n" +
             "  <label class=\"label_small_margin\">Routing Key</label>\n" +
             "  <input class=\"form-control-statsagg\" placeholder=\"Enter a PagerDuty service routing key\" name=\"RoutingKey\" id=\"RoutingKey\" ");
@@ -190,9 +197,11 @@ public class CreatePagerDutyService extends HttpServlet {
         if ((pagerdutyService != null) && (pagerdutyService.getRoutingKey() != null)) {
             htmlBody.append("value=\"").append(StatsAggHtmlFramework.htmlEncode(pagerdutyService.getRoutingKey(), true)).append("\"");
         }
+        
+        htmlBody.append(">\n</div>\n");
 
+        
         htmlBody.append(
-            ">\n</div>\n" +
             "       <button type=\"submit\" class=\"btn btn-default btn-primary statsagg_button_no_shadow statsagg_page_content_font\">Submit</button>" +
             "&nbsp;&nbsp;&nbsp;" +
             "       <a href=\"PagerDutyServices\" class=\"btn btn-default statsagg_page_content_font\" role=\"button\">Cancel</a>" +
@@ -230,11 +239,10 @@ public class CreatePagerDutyService extends HttpServlet {
         
         // insert/update/delete records in the database
         if ((pagerdutyService != null) && (pagerdutyService.getName() != null)) {
-            PagerdutyServicesLogic pagerdutyServicesLogic = new PagerdutyServicesLogic();
-            returnString = pagerdutyServicesLogic.alterRecordInDatabase(pagerdutyService, oldName);
+            returnString = PagerdutyServicesDaoWrapper.alterRecordInDatabase(pagerdutyService, oldName).getReturnString();
         }
         else {
-            returnString = "Failed to add PagerDuty service. Reason=\"Field validation failed.\"";
+            returnString = "Failed to create or alter PagerDuty service. Reason=\"Field validation failed.\"";
             logger.warn(returnString);
         }
         
@@ -258,7 +266,6 @@ public class CreatePagerDutyService extends HttpServlet {
             if (parameter == null) parameter = Common.getSingleParameterAsString(request, "name");
             String trimmedName = parameter.trim();
             pagerdutyService.setName(trimmedName);
-            pagerdutyService.setUppercaseName(trimmedName.toUpperCase());
             if ((pagerdutyService.getName() == null) || pagerdutyService.getName().isEmpty()) didEncounterError = true;
 
             parameter = Common.getSingleParameterAsString(request, "Description");

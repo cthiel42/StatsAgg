@@ -1,11 +1,12 @@
 package com.pearson.statsagg.web_ui;
 
-import com.pearson.statsagg.database_objects.suspensions.SuspensionsLogic;
+import com.pearson.statsagg.database_objects.suspensions.SuspensionsDaoWrapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import com.pearson.statsagg.database_objects.DatabaseObjectCommon;
+import com.pearson.statsagg.database_objects.DatabaseObjectValidation;
 import java.io.PrintWriter;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import com.pearson.statsagg.database_objects.alerts.Alert;
 import com.pearson.statsagg.database_objects.alerts.AlertsDao;
 import com.pearson.statsagg.utilities.time_utils.DateAndTime;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
+import com.pearson.statsagg.utilities.math_utils.MathUtilities;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -537,39 +539,61 @@ public class CreateSuspension extends HttpServlet {
         Suspension suspension = getSuspensionFromRequestParameters(request);
         
         // help determine if the suspension is being renamed by getting the previous name of the suspension (if it exists)
-        String oldName = Common.getSingleParameterAsString(request, "Old_Name");
-        if (oldName == null) oldName = Common.getSingleParameterAsString(request, "old_name");
-        if (oldName == null) {
-            String id = Common.getSingleParameterAsString(request, "Id");
-            if (id == null) id = Common.getSingleParameterAsString(request, "id");
-            
-            if (id != null) {
-                try {
-                    Integer id_Integer = Integer.parseInt(id.trim());
-                    Suspension oldSuspension = SuspensionsDao.getSuspension(DatabaseConnections.getConnection(), true, id_Integer);
-                    oldName = oldSuspension.getName();
-                }
-                catch (Exception e){}
-            }
-        }
+        String oldName = getOldSuspensionName(request);
         
         // insert/update/delete records in the database
-        if (suspension != null) {
-            SuspensionsLogic suspensionsLogic = new SuspensionsLogic();
-            returnString = suspensionsLogic.alterRecordInDatabase(suspension, oldName);
-            
-            if (suspensionsLogic.getLastAlterRecordStatus() == SuspensionsLogic.STATUS_CODE_SUCCESS) {
+        DatabaseObjectValidation databaseObjectValidation = Suspension.isValid(suspension);
+        
+        if (suspension == null) {
+            returnString = "Failed to create or alter suspension. Reason=\"One or more invalid suspension fields detected\".";
+            logger.warn(returnString);
+        } 
+        else if (!databaseObjectValidation.isValid()) {
+            returnString = "Failed to create or alter suspension. Reason=\"" + databaseObjectValidation.getReason() + "\".";
+        }
+        else {
+            SuspensionsDaoWrapper suspensionsDaoWrapper = SuspensionsDaoWrapper.alterRecordInDatabase(suspension, oldName);
+            returnString = suspensionsDaoWrapper.getReturnString();
+
+            if (suspensionsDaoWrapper.getLastAlterRecordStatus() == SuspensionsDaoWrapper.STATUS_CODE_SUCCESS) {
                 logger.info("Running suspension routine");
                 com.pearson.statsagg.threads.alert_related.Suspensions suspensions = new com.pearson.statsagg.threads.alert_related.Suspensions();
                 suspensions.runSuspensionRoutine();
             }
         }
-        else {
-            returnString = "Failed to add suspension. Reason=\"Field validation failed.\"";
-            logger.warn(returnString);
+
+        return returnString;
+    }
+    
+    protected static String getOldSuspensionName(Object request) {
+        
+        try {
+            if (request == null) return null;
+
+            String oldName = Common.getSingleParameterAsString(request, "Old_Name");
+            if (oldName == null) oldName = Common.getSingleParameterAsString(request, "old_name");
+
+            if (oldName == null) {
+                String id = Common.getSingleParameterAsString(request, "Id");
+                if (id == null) id = Common.getSingleParameterAsString(request, "id");
+
+                if (id != null) {
+                    try {
+                        Integer id_Integer = Integer.parseInt(id.trim());
+                        Suspension oldSuspension = SuspensionsDao.getSuspension(DatabaseConnections.getConnection(), true, id_Integer);
+                        oldName = oldSuspension.getName();
+                    }
+                    catch (Exception e){}
+                }
+            }
+
+            return oldName;
+        }
+        catch (Exception e){
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
         }
         
-        return returnString;
     }
     
     private Suspension getSuspensionFromRequestParameters(Object request) {
@@ -577,9 +601,7 @@ public class CreateSuspension extends HttpServlet {
         if (request == null) {
             return null;
         }
-        
-        boolean didEncounterError = false;
-        
+                
         Suspension suspension = new Suspension();
 
         try {
@@ -588,10 +610,8 @@ public class CreateSuspension extends HttpServlet {
             // column #1 parameters
             parameter = Common.getSingleParameterAsString(request, "Name");
             if (parameter == null) parameter = Common.getSingleParameterAsString(request, "name");
-            String trimmedName = parameter.trim();
+            String trimmedName = (parameter != null) ? parameter.trim() : "";
             suspension.setName(trimmedName);
-            suspension.setUppercaseName(trimmedName.toUpperCase());
-            if ((suspension.getName() == null) || suspension.getName().isEmpty()) didEncounterError = true;
             
             parameter = Common.getSingleParameterAsString(request, "Description");
             if (parameter == null) parameter = Common.getSingleParameterAsString(request, "description");
@@ -633,15 +653,13 @@ public class CreateSuspension extends HttpServlet {
                 String trimmedTags = Suspension.trimNewLineDelimitedTags(parameter);
                 suspension.setMetricGroupTagsInclusive(trimmedTags);
             }
-            else {
-                if (request instanceof JsonObject) {
-                    JsonObject jsonObject = (JsonObject) request;
-                    JsonArray jsonArray = jsonObject.getAsJsonArray("metric_group_tags_inclusive");
-                    if (jsonArray != null) {
-                        StringBuilder stringBuilder = new StringBuilder();
-                        for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
-                        suspension.setMetricGroupTagsInclusive(stringBuilder.toString().trim()); 
-                    }
+            else if (request instanceof JsonObject) {
+                JsonObject jsonObject = (JsonObject) request;
+                JsonArray jsonArray = jsonObject.getAsJsonArray("metric_group_tags_inclusive");
+                if (jsonArray != null) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
+                    suspension.setMetricGroupTagsInclusive(stringBuilder.toString().trim()); 
                 }
             }
             
@@ -650,34 +668,31 @@ public class CreateSuspension extends HttpServlet {
                 String trimmedTags = Suspension.trimNewLineDelimitedTags(parameter);
                 suspension.setMetricGroupTagsExclusive(trimmedTags);
             }
-            else {
-                if (request instanceof JsonObject) {
-                    JsonObject jsonObject = (JsonObject) request;
-                    JsonArray jsonArray = jsonObject.getAsJsonArray("metric_group_tags_exclusive");
-                    if (jsonArray != null) {
-                        StringBuilder stringBuilder = new StringBuilder();
-                        for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
-                        suspension.setMetricGroupTagsExclusive(stringBuilder.toString().trim()); 
-                    }
+            else if (request instanceof JsonObject) {
+                JsonObject jsonObject = (JsonObject) request;
+                JsonArray jsonArray = jsonObject.getAsJsonArray("metric_group_tags_exclusive");
+                if (jsonArray != null) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
+                    suspension.setMetricGroupTagsExclusive(stringBuilder.toString().trim()); 
                 }
             }
-            
+
             parameter = Common.getSingleParameterAsString(request, "MetricSuspensionRegexes");
             if (parameter != null) {
                 String metricSuspensionRegexes = Suspension.trimNewLineDelimitedTags(parameter);
                 suspension.setMetricSuspensionRegexes(metricSuspensionRegexes);
             }
-            else {
-                if (request instanceof JsonObject) {
-                    JsonObject jsonObject = (JsonObject) request;
-                    JsonArray jsonArray = jsonObject.getAsJsonArray("metric_suspension_regexes");
-                    if (jsonArray != null) {
-                        StringBuilder stringBuilder = new StringBuilder();
-                        for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
-                        suspension.setMetricSuspensionRegexes(stringBuilder.toString().trim()); 
-                    }
+            else if (request instanceof JsonObject) {
+                JsonObject jsonObject = (JsonObject) request;
+                JsonArray jsonArray = jsonObject.getAsJsonArray("metric_suspension_regexes");
+                if (jsonArray != null) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    for (JsonElement jsonElement : jsonArray) stringBuilder.append(jsonElement.getAsString()).append("\n");
+                    suspension.setMetricSuspensionRegexes(stringBuilder.toString().trim()); 
                 }
             }
+            
             
             // column #3 parameters
             parameter = Common.getSingleParameterAsString(request, "Type");
@@ -755,7 +770,7 @@ public class CreateSuspension extends HttpServlet {
             if (parameter == null) parameter = Common.getSingleParameterAsString(request, "duration");
             if (parameter != null) {
                 String parameterTrimmed = parameter.trim();
-                if (!parameterTrimmed.isEmpty()) {    
+                if (!parameterTrimmed.isEmpty() && MathUtilities.isStringABigDecimal(parameterTrimmed)) {    
                     BigDecimal time = new BigDecimal(parameterTrimmed);
                     BigDecimal timeInMs = DatabaseObjectCommon.getMillisecondValueForTime(time, suspension.getDurationTimeUnit());
                     if (timeInMs != null) suspension.setDuration(timeInMs.longValue());
@@ -781,14 +796,10 @@ public class CreateSuspension extends HttpServlet {
             }
         }
         catch (Exception e) {
-            didEncounterError = true;
             logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            suspension = null;
         }
             
-        if (didEncounterError) suspension = null;
-        boolean isValid = Suspension.isValid(suspension);
-        if (!isValid) suspension = null;
-        
         return suspension;
     }
     

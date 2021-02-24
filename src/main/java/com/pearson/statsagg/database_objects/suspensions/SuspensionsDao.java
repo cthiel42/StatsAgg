@@ -103,7 +103,38 @@ public class SuspensionsDao {
         }
 
     }
+    
+    public static boolean upsert(Connection connection, boolean closeConnectionOnCompletion, boolean commitOnCompletion, Suspension suspension, String oldSuspensionName) {
+        
+        try {                   
+            boolean isConnectionInitiallyAutoCommit = connection.getAutoCommit();
+            if (isConnectionInitiallyAutoCommit) DatabaseUtils.setAutoCommit(connection, false);
+            
+            Suspension suspensionFromDb = SuspensionsDao.getSuspension(connection, false, oldSuspensionName);
 
+            boolean upsertSuccess = true;
+            if (suspensionFromDb == null) {
+                upsertSuccess = insert(connection, false, commitOnCompletion, suspension);
+            }
+            else {
+                suspension.setId(suspensionFromDb.getId());
+                if (!suspensionFromDb.isEqual(suspension)) upsertSuccess = update(connection, false, commitOnCompletion, suspension);
+            }
+
+            if (isConnectionInitiallyAutoCommit) DatabaseUtils.setAutoCommit(connection, true);
+            
+            return upsertSuccess;
+        }
+        catch (Exception e) {
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return false;
+        }
+        finally {
+            if (closeConnectionOnCompletion) DatabaseUtils.cleanup(connection);
+        }
+
+    }
+    
     public static boolean delete(Connection connection, boolean closeConnectionOnCompletion, boolean commitOnCompletion, Suspension suspension) {
         
         try {                 
@@ -180,12 +211,51 @@ public class SuspensionsDao {
         
     }
     
+    public static Suspension getSuspension_FilterByUppercaseName(Connection connection, boolean closeConnectionOnCompletion, String suspensionName) {
+        
+        try {
+            List<Suspension> suspensions = DatabaseUtils.query_PreparedStatement(connection, closeConnectionOnCompletion, 
+                    new SuspensionsResultSetHandler(), 
+                    SuspensionsSql.Select_Suspension_ByUppercaseName, suspensionName.toUpperCase());
+            
+            return DatabaseUtils.getSingleResultFromList(suspensions);
+        }
+        catch (Exception e) {
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        finally {
+            if (closeConnectionOnCompletion) DatabaseUtils.cleanup(connection);
+        }
+        
+    }
+    
     public static List<Suspension> getSuspensions(Connection connection, boolean closeConnectionOnCompletion) {
         
         try {
             List<Suspension> suspensions = DatabaseUtils.query_PreparedStatement(connection, closeConnectionOnCompletion, 
                     new SuspensionsResultSetHandler(), 
                     SuspensionsSql.Select_AllSuspensions);
+            
+            return suspensions;
+        }
+        catch (Exception e) {
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        finally {
+            if (closeConnectionOnCompletion) DatabaseUtils.cleanup(connection);
+        }
+        
+    }
+    
+    public static List<Suspension> getSuspensions_FilterByAlertId(Connection connection, boolean closeConnectionOnCompletion, int alertId) {
+        
+        try {
+            List<Suspension> suspensions = DatabaseUtils.query_PreparedStatement(connection, closeConnectionOnCompletion, 
+                    new SuspensionsResultSetHandler(), 
+                    SuspensionsSql.Select_Suspension_ByAlertId,
+                    alertId);
             
             return suspensions;
         }

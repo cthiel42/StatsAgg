@@ -1,6 +1,6 @@
 package com.pearson.statsagg.web_ui;
 
-import com.pearson.statsagg.database_objects.alerts.AlertsLogic;
+import com.pearson.statsagg.database_objects.alerts.AlertsDaoWrapper;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
@@ -259,14 +259,16 @@ public class AlertAssociations extends HttpServlet {
         catch (Exception e){}
         
         if ((alert.isCautionAlertActive() != null) && alert.isCautionAlertActive() && (acknowledgeLevel.equalsIgnoreCase("Caution") || acknowledgeLevel.equalsIgnoreCase("Triggered"))) {
-            AlertsLogic.changeAlertCautionAcknowledge(alert.getName(), acknowledgeChange_Boolean);
-            didSetAlertAcknowledgement = true;
+            AlertsDaoWrapper alertsDaoWrapper = AlertsDaoWrapper.changeAlertCautionAcknowledge(alert.getName(), acknowledgeChange_Boolean);
+            didSetAlertAcknowledgement = (alertsDaoWrapper.getLastAlterRecordStatus() == AlertsDaoWrapper.STATUS_CODE_SUCCESS);
         }     
 
         if ((alert.isDangerAlertActive() != null) && alert.isDangerAlertActive() && (acknowledgeLevel.equalsIgnoreCase("Danger") || acknowledgeLevel.equalsIgnoreCase("Triggered"))) {
-            AlertsLogic.changeAlertDangerAcknowledge(alert.getName(), acknowledgeChange_Boolean);
-            didSetAlertAcknowledgement = true;
+            AlertsDaoWrapper alertsDaoWrapper = AlertsDaoWrapper.changeAlertDangerAcknowledge(alert.getName(), acknowledgeChange_Boolean);
+            didSetAlertAcknowledgement = (alertsDaoWrapper.getLastAlterRecordStatus() == AlertsDaoWrapper.STATUS_CODE_SUCCESS);
         }    
+        
+        if (didSetAlertAcknowledgement) Alerts.sendPagerDutyAcknowledgeRequest(alert.getId());
         
         return didSetAlertAcknowledgement;
     }
@@ -497,7 +499,7 @@ public class AlertAssociations extends HttpServlet {
                     }
 
                     outputString.append("<li>");
-                    outputString.append("<a href=\"MetricRecentValues?ExcludeNavbar=").append(excludeNavbar).append("&amp;MetricKey=").append(StatsAggHtmlFramework.urlEncode(activeCautionAlertMetricKey)).append("\">");
+                    outputString.append("<a class=\"iframe cboxElement\" href=\"MetricRecentValues?ExcludeNavbar=").append(excludeNavbar).append("&amp;MetricKey=").append(StatsAggHtmlFramework.urlEncode(activeCautionAlertMetricKey)).append("\">");
                     outputString.append(StatsAggHtmlFramework.htmlEncode(activeCautionAlertMetricKey)).append("</a>");
                     outputString.append("&nbsp;=&nbsp;").append(metricValueString);
                     if (!forgetMetric.isEmpty()) outputString.append("&nbsp;&nbsp;").append(forgetMetric);
@@ -611,7 +613,7 @@ public class AlertAssociations extends HttpServlet {
                     }
 
                     outputString.append("<li>");
-                    outputString.append("<a href=\"MetricRecentValues?ExcludeNavbar=").append(excludeNavbar).append("&amp;MetricKey=").append(StatsAggHtmlFramework.urlEncode(activeDangerAlertMetricKey)).append("\">");
+                    outputString.append("<a class=\"iframe cboxElement\" href=\"MetricRecentValues?ExcludeNavbar=").append(excludeNavbar).append("&amp;MetricKey=").append(StatsAggHtmlFramework.urlEncode(activeDangerAlertMetricKey)).append("\">");
                     outputString.append(StatsAggHtmlFramework.htmlEncode(activeDangerAlertMetricKey)).append("</a>");
                     outputString.append("&nbsp;=&nbsp;").append(metricValueString);
                     if (!forgetMetric.isEmpty()) outputString.append("&nbsp;&nbsp;").append(forgetMetric);

@@ -171,7 +171,7 @@ public class SuspensionAssociationsPreview extends HttpServlet {
             logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
         }
             
-        if (Suspension.isValid_CheckSuspendBy(suspension)) return suspension;
+        if (Suspension.isValid_CheckSuspendBy(suspension).isValid()) return suspension;
         else return null;
     }
    
@@ -192,7 +192,8 @@ public class SuspensionAssociationsPreview extends HttpServlet {
         List<String> alertNames = new ArrayList<>();
         
         List<Alert> alerts = AlertsDao.getAlerts(DatabaseConnections.getConnection(), true);
-        
+        if (alerts == null) alerts = new ArrayList<>();
+
         for (Alert alert : alerts) {
             if ((alert.getName() == null) || alert.getName().isEmpty()) continue;
             
