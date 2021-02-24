@@ -587,8 +587,6 @@ public class NotificationThread implements Runnable  {
         
     }
     
-<<<<<<< HEAD
-=======
     public JsonObject buildPagerdutyAcknowledgeEvent() {
         
         if ((alert_ == null) || ((alertLevel_ != Alert.CAUTION) && (alertLevel_ != Alert.DANGER))) {
@@ -630,20 +628,16 @@ public class NotificationThread implements Runnable  {
         
     }
     
->>>>>>> PearsonEducation-1.6
     public void sendPagerdutyEvent(String routingKey, JsonObject event) {
         
         if (routingKey == null) {
             String cleanSubject = StringUtilities.removeNewlinesFromString(event.getAsJsonObject("payload").get("summary").toString(), ' ');
             logger.error("Message=\"Failed to send PagerDuty event. No valid API keys.\", Subject=\"" + cleanSubject + "\"");
-<<<<<<< HEAD
-=======
             return;
         }
         
         if (event == null) {
             logger.error("Message=\"Failed to send PagerDuty event. PagerDuty event missing.\"");
->>>>>>> PearsonEducation-1.6
             return;
         }
         
