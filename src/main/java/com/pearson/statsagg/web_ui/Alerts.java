@@ -2,13 +2,9 @@ package com.pearson.statsagg.web_ui;
 
 import com.google.gson.JsonObject;
 import com.pearson.statsagg.configuration.ApplicationConfiguration;
-<<<<<<< HEAD
-import com.pearson.statsagg.database_objects.alerts.AlertsLogic;
-=======
 import com.pearson.statsagg.database_objects.alert_templates.AlertTemplate;
 import com.pearson.statsagg.database_objects.alert_templates.AlertTemplatesDao;
 import com.pearson.statsagg.database_objects.alerts.AlertsDaoWrapper;
->>>>>>> 529f3465cf857e7a6300790d49a126db6835493b
 import com.pearson.statsagg.globals.DatabaseConnections;
 import com.pearson.statsagg.database_objects.suspensions.Suspension;
 import com.pearson.statsagg.database_objects.suspensions.SuspensionsDao;
@@ -156,11 +152,7 @@ public class Alerts extends HttpServlet {
 
                 try {
                     Boolean isAcknowledged_Boolean = Boolean.parseBoolean(isAcknowledged_String);
-<<<<<<< HEAD
-                    AlertsLogic.changeAlertAcknowledge(alertId, isAcknowledged_Boolean);
-=======
                     AlertsDaoWrapper.changeAlertAcknowledge(alertId, isAcknowledged_Boolean);
->>>>>>> 529f3465cf857e7a6300790d49a126db6835493b
                     sendPagerDutyAcknowledgeRequest(alertId);
                 }
                 catch (Exception e) {
@@ -622,34 +614,6 @@ public class Alerts extends HttpServlet {
         }
         
         return isAcknowledged;
-    }
-
-    private void sendPagerDutyAcknowledgeRequest(Integer alertId) {
-        
-        if (!ApplicationConfiguration.isPagerdutyIntegrationEnabled()) return;
-        
-        Alert alert = AlertsDao.getAlert(DatabaseConnections.getConnection(), true, alertId);
-        
-        if (alert == null) return;
-        
-        int alertLevel;
-        int notificationGroupId;
-        if (alert.isDangerAlertActive()){
-            alertLevel = Alert.DANGER;
-            notificationGroupId = alert.getDangerNotificationGroupId();
-        } 
-        else if (alert.isCautionAlertActive()) {
-            alertLevel = Alert.CAUTION;
-            notificationGroupId = alert.getCautionNotificationGroupId();
-        }
-        else {
-            return;
-        }
-        
-        NotificationThread notificationThread = new NotificationThread(alert, alertLevel, new ArrayList<String>(), new HashMap<>(), new HashMap<>(), false, false, "" );
-        JsonObject event = notificationThread.buildPagerDutyAcknowledgeEvent();
-        String routingKey = NotificationThread.getPagerdutyRoutingKeyForAlert(notificationGroupId);
-        notificationThread.sendPagerDutyEvent(routingKey, event);
     }
     
     protected static void sendPagerDutyAcknowledgeRequest(Integer alertId) {
