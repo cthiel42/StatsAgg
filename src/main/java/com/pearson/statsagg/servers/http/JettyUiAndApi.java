@@ -2,10 +2,13 @@ package com.pearson.statsagg.servers.http;
 
 import com.pearson.statsagg.servers.JettyServer;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
+import com.pearson.statsagg.utilities.file_utils.FileIo;
 import com.pearson.statsagg.web_ui.AlertAssociations;
 import com.pearson.statsagg.web_ui.AlertDetails;
 import com.pearson.statsagg.web_ui.AlertPreview;
+import com.pearson.statsagg.web_ui.AlertTemplate_DerivedAlerts;
 import com.pearson.statsagg.web_ui.AlertTemplateDetails;
+import com.pearson.statsagg.web_ui.AlertTemplates;
 import com.pearson.statsagg.web_ui.Alert_SuspensionAssociations;
 import com.pearson.statsagg.web_ui.Alerts;
 import com.pearson.statsagg.web_ui.AlertsReport;
@@ -13,9 +16,12 @@ import com.pearson.statsagg.web_ui.Benchmark;
 import com.pearson.statsagg.web_ui.CreateAlert;
 import com.pearson.statsagg.web_ui.CreateAlertTemplate;
 import com.pearson.statsagg.web_ui.CreateMetricGroup;
+import com.pearson.statsagg.web_ui.CreateMetricGroupTemplate;
 import com.pearson.statsagg.web_ui.CreateNotificationGroup;
 import com.pearson.statsagg.web_ui.CreatePagerDutyService;
 import com.pearson.statsagg.web_ui.CreateSuspension;
+import com.pearson.statsagg.web_ui.CreateVariableSet;
+import com.pearson.statsagg.web_ui.CreateVariableSetList;
 import com.pearson.statsagg.web_ui.ForgetMetrics;
 import com.pearson.statsagg.web_ui.ForgetMetricsPreview;
 import com.pearson.statsagg.web_ui.HealthCheck;
@@ -26,6 +32,9 @@ import com.pearson.statsagg.web_ui.MetricAlertAssociations;
 import com.pearson.statsagg.web_ui.MetricGroupAlertAssociations;
 import com.pearson.statsagg.web_ui.MetricGroupDetails;
 import com.pearson.statsagg.web_ui.MetricGroupMetricKeyAssociations;
+import com.pearson.statsagg.web_ui.MetricGroupTemplateDetails;
+import com.pearson.statsagg.web_ui.MetricGroupTemplate_DerivedMetricGroups;
+import com.pearson.statsagg.web_ui.MetricGroupTemplates;
 import com.pearson.statsagg.web_ui.MetricGroups;
 import com.pearson.statsagg.web_ui.MetricRecentValues;
 import com.pearson.statsagg.web_ui.NotificationGroupDetails;
@@ -40,6 +49,11 @@ import com.pearson.statsagg.web_ui.SuspensionDetails;
 import com.pearson.statsagg.web_ui.Suspension_AlertAssociations;
 import com.pearson.statsagg.web_ui.Suspension_MetricKeyAssociations;
 import com.pearson.statsagg.web_ui.Suspensions;
+import com.pearson.statsagg.web_ui.VariableSetDetails;
+import com.pearson.statsagg.web_ui.VariableSetListDetails;
+import com.pearson.statsagg.web_ui.VariableSetLists;
+import com.pearson.statsagg.web_ui.VariableSets;
+import java.io.File;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -87,7 +101,10 @@ public class JettyUiAndApi implements JettyServer {
             servletContextHandler.setContextPath(contextPath_);
             DefaultServlet defaultServlet = new DefaultServlet();
             ServletHolder servletHolder = new ServletHolder("default", defaultServlet);
-            servletHolder.setInitParameter("resourceBase", "./src/webapp/");
+            
+            boolean doesSrcWebappExist = FileIo.doesFileExist(new File("./src/webapp"));
+            if (doesSrcWebappExist) servletHolder.setInitParameter("resourceBase", "./src/webapp/");
+            else servletHolder.setInitParameter("resourceBase", "./webapp/");
             servletContextHandler.addServlet(servletHolder, "/*");
 
             // ui servlets
@@ -116,6 +133,8 @@ public class JettyUiAndApi implements JettyServer {
         servletContextHandler.addServlet(AlertDetails.class, "/AlertDetails");
         servletContextHandler.addServlet(AlertPreview.class, "/AlertPreview");
         servletContextHandler.addServlet(AlertTemplateDetails.class, "/AlertTemplateDetails");
+        servletContextHandler.addServlet(AlertTemplate_DerivedAlerts.class, "/AlertTemplate-DerivedAlerts");   
+        servletContextHandler.addServlet(AlertTemplates.class, "/AlertTemplates");
         servletContextHandler.addServlet(Alert_SuspensionAssociations.class, "/Alert-SuspensionAssociations");
         servletContextHandler.addServlet(Alerts.class, "/Alerts");
         servletContextHandler.addServlet(AlertsReport.class, "/AlertsReport");
@@ -123,9 +142,12 @@ public class JettyUiAndApi implements JettyServer {
         servletContextHandler.addServlet(CreateAlert.class, "/CreateAlert");
         servletContextHandler.addServlet(CreateAlertTemplate.class, "/CreateAlertTemplate");
         servletContextHandler.addServlet(CreateMetricGroup.class, "/CreateMetricGroup");
+        servletContextHandler.addServlet(CreateMetricGroupTemplate.class, "/CreateMetricGroupTemplate");
         servletContextHandler.addServlet(CreateNotificationGroup.class, "/CreateNotificationGroup");
         servletContextHandler.addServlet(CreatePagerDutyService.class, "/CreatePagerDutyService");
         servletContextHandler.addServlet(CreateSuspension.class, "/CreateSuspension");
+        servletContextHandler.addServlet(CreateVariableSet.class, "/CreateVariableSet");
+        servletContextHandler.addServlet(CreateVariableSetList.class, "/CreateVariableSetList");
         servletContextHandler.addServlet(ForgetMetrics.class, "/ForgetMetrics");
         servletContextHandler.addServlet(ForgetMetricsPreview.class, "/ForgetMetricsPreview");
         servletContextHandler.addServlet(HealthCheck.class, "/HealthCheck");
@@ -137,6 +159,9 @@ public class JettyUiAndApi implements JettyServer {
         servletContextHandler.addServlet(MetricGroupDetails.class, "/MetricGroupDetails");
         servletContextHandler.addServlet(MetricGroupMetricKeyAssociations.class, "/MetricGroupMetricKeyAssociations");
         servletContextHandler.addServlet(MetricGroups.class, "/MetricGroups");
+        servletContextHandler.addServlet(MetricGroupTemplates.class, "/MetricGroupTemplates");
+        servletContextHandler.addServlet(MetricGroupTemplateDetails.class, "/MetricGroupTemplateDetails");
+        servletContextHandler.addServlet(MetricGroupTemplate_DerivedMetricGroups.class, "/MetricGroupTemplate-DerivedMetricGroups");
         servletContextHandler.addServlet(MetricRecentValues.class, "/MetricRecentValues");
         servletContextHandler.addServlet(NotificationGroupDetails.class, "/NotificationGroupDetails");
         servletContextHandler.addServlet(NotificationGroup_AlertAssociations.class, "/NotificationGroup-AlertAssociations");
@@ -150,6 +175,10 @@ public class JettyUiAndApi implements JettyServer {
         servletContextHandler.addServlet(Suspension_AlertAssociations.class, "/Suspension-AlertAssociations");
         servletContextHandler.addServlet(Suspension_MetricKeyAssociations.class, "/Suspension-MetricKeyAssociations");
         servletContextHandler.addServlet(Suspensions.class, "/Suspensions");
+        servletContextHandler.addServlet(VariableSetDetails.class, "/VariableSetDetails");
+        servletContextHandler.addServlet(VariableSetListDetails.class, "/VariableSetListDetails");
+        servletContextHandler.addServlet(VariableSetLists.class, "/VariableSetLists");
+        servletContextHandler.addServlet(VariableSets.class, "/VariableSets");
     }
     
     private void addApiServletsToContext(ServletContextHandler servletContextHandler) {
@@ -171,6 +200,10 @@ public class JettyUiAndApi implements JettyServer {
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.NotificationGroupDetails.class, "/api/notification-group-details");
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.NotificationGroupRemove.class, "/api/notification-group-remove");
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.NotificationGroupsList.class, "/api/notification-groups-list");
+        servletContextHandler.addServlet(com.pearson.statsagg.web_api.PagerDutyServiceCreate.class, "/api/pagerduty-service-create");
+        servletContextHandler.addServlet(com.pearson.statsagg.web_api.PagerDutyServiceDetails.class, "/api/pagerduty-service-details");
+        servletContextHandler.addServlet(com.pearson.statsagg.web_api.PagerDutyServiceRemove.class, "/api/pagerduty-service-remove");
+        servletContextHandler.addServlet(com.pearson.statsagg.web_api.PagerDutyServicesList.class, "/api/pagerduty-services-list");
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.SuspensionCreate.class, "/api/suspension-create");
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.SuspensionDetails.class, "/api/suspension-details");
         servletContextHandler.addServlet(com.pearson.statsagg.web_api.SuspensionEnable.class, "/api/suspension-enable");

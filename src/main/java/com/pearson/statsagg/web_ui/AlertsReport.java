@@ -12,16 +12,13 @@ import com.pearson.statsagg.database_objects.alerts.Alert;
 import com.pearson.statsagg.database_objects.alerts.AlertsDao;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroup;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroupsDao;
-import com.pearson.statsagg.database_objects.metric_group_regexes.MetricGroupRegex;
-import com.pearson.statsagg.database_objects.metric_group_regexes.MetricGroupRegexesDao;
-import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTag;
-import com.pearson.statsagg.database_objects.metric_group_tags.MetricGroupTagsDao;
 import com.pearson.statsagg.database_objects.notification_groups.NotificationGroup;
 import com.pearson.statsagg.database_objects.notification_groups.NotificationGroupsDao;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
 import com.pearson.statsagg.utilities.db_utils.DatabaseUtils;
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.util.ArrayList;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -163,7 +160,7 @@ public class AlertsReport extends HttpServlet {
             "     <tbody>\n");
 
         List<Alert> alerts = AlertsDao.getAlerts(DatabaseConnections.getConnection(), true);
-        Map<Integer, List<MetricGroupTag>> tagsByMetricGroupId = MetricGroupTagsDao.getAllMetricGroupTagsByMetricGroupId(DatabaseConnections.getConnection(), true);
+        if (alerts == null) alerts = new ArrayList<>();
         
         Connection connection = DatabaseConnections.getConnection();
         Map<Integer, String> notificationGroupNames_ById = NotificationGroupsDao.getNotificationGroupNames_ById(connection, false);
@@ -175,7 +172,6 @@ public class AlertsReport extends HttpServlet {
             
             try {
                 MetricGroup metricGroup = MetricGroupsDao.getMetricGroup(DatabaseConnections.getConnection(), true, alert.getMetricGroupId());
-                List<MetricGroupRegex> metricGroupRegexes = MetricGroupRegexesDao.getMetricGroupRegexesByMetricGroupId(DatabaseConnections.getConnection(), true, alert.getMetricGroupId());
 
                 // alert id
                 Integer alertId = alert.getId();
@@ -210,49 +206,45 @@ public class AlertsReport extends HttpServlet {
 
                 // metric tags csv
                 StringBuilder metricGroupTagsCsv = new StringBuilder();
-                if ((metricGroup != null) && (metricGroup.getId() != null) && (tagsByMetricGroupId != null)) {
-                    List<MetricGroupTag> metricGroupTags = tagsByMetricGroupId.get(metricGroup.getId());
-
-                    if (metricGroupTags != null) {
-                        for (int i = 0; i < metricGroupTags.size(); i++) {
-                            MetricGroupTag metricGroupTag = metricGroupTags.get(i);
-                            metricGroupTagsCsv = metricGroupTagsCsv.append("<u>").append(StatsAggHtmlFramework.htmlEncode(metricGroupTag.getTag())).append("</u>");
-                            if ((i + 1) < metricGroupTags.size()) metricGroupTagsCsv.append(" &nbsp;");
-                        }
+                if ((metricGroup != null) && (metricGroup.getTags() != null)) {
+                    List<String> metricGroupTagsList = new ArrayList<>(metricGroup.getTags());
+                    for (int i = 0; i < metricGroupTagsList.size(); i++) {
+                        metricGroupTagsCsv = metricGroupTagsCsv.append("<u>").append(StatsAggHtmlFramework.htmlEncode(metricGroupTagsList.get(i).trim())).append("</u>");
+                        if ((i + 1) < metricGroupTagsList.size()) metricGroupTagsCsv.append(" &nbsp;");
                     }
                 }
 
                 // metric group regexes
-                StringBuilder metricGroupRegexes_StringBuilder = new StringBuilder();
-                if ((metricGroupRegexes != null) && !metricGroupRegexes.isEmpty()) {
-                    for (MetricGroupRegex metricGroupRegex : metricGroupRegexes) {
-                        if (!metricGroupRegex.isBlacklistRegex()) metricGroupRegexes_StringBuilder.append(StatsAggHtmlFramework.htmlEncode(metricGroupRegex.getPattern())).append("<br>");
+                StringBuilder metricGroupMatchRegexes_StringBuilder = new StringBuilder();
+                if ((metricGroup != null) && (metricGroup.getMatchRegexes() != null) && !metricGroup.getMatchRegexes().isEmpty()) {
+                    for (String matchRegex : metricGroup.getMatchRegexes()) {
+                        metricGroupMatchRegexes_StringBuilder.append(StatsAggHtmlFramework.htmlEncode(matchRegex.trim())).append("<br>");
                     }
                 }
 
                 // metric group regexes blacklist
-                StringBuilder metricGroupRegexesBlacklist_StringBuilder = new StringBuilder();
-                if ((metricGroupRegexes != null) && !metricGroupRegexes.isEmpty()) {
-                    for (MetricGroupRegex metricGroupRegex : metricGroupRegexes) {
-                        if (metricGroupRegex.isBlacklistRegex()) metricGroupRegexesBlacklist_StringBuilder.append(StatsAggHtmlFramework.htmlEncode(metricGroupRegex.getPattern())).append("<br>");
+                StringBuilder metricGroupBlacklistRegexes_StringBuilder = new StringBuilder();
+                if ((metricGroup != null) && (metricGroup.getBlacklistRegexes() != null) && !metricGroup.getBlacklistRegexes().isEmpty()) {
+                    for (String blacklistRegex : metricGroup.getBlacklistRegexes()) {
+                        metricGroupBlacklistRegexes_StringBuilder.append(StatsAggHtmlFramework.htmlEncode(blacklistRegex.trim())).append("<br>");
                     }
                 }
 
                 // alert - caution criteria
                 String alertCriteriaCaution = "N/A";
-                if (alert.isCautionEnabled() && (alert.getAlertType() == Alert.TYPE_THRESHOLD) && alert.isCautionAlertCriteriaValid()) {
+                if (alert.isCautionEnabled() && (alert.getAlertType() == Alert.TYPE_THRESHOLD) && alert.isCautionAlertCriteriaValid().isValid()) {
                     alertCriteriaCaution = alert.getHumanReadable_AlertCriteria_MinimumSampleCount(Alert.CAUTION) + "<br><br>" + alert.getHumanReadable_AlertCriteria_ThresholdCriteria(Alert.CAUTION);
                 }
-                else if (alert.isCautionEnabled() && (alert.getAlertType() == Alert.TYPE_AVAILABILITY) && alert.isCautionAlertCriteriaValid()) {
+                else if (alert.isCautionEnabled() && (alert.getAlertType() == Alert.TYPE_AVAILABILITY) && alert.isCautionAlertCriteriaValid().isValid()) {
                     alertCriteriaCaution = alert.getHumanReadable_AlertCriteria_AvailabilityCriteria(Alert.CAUTION);
                 }
                 
                 // alert - danger criteria
                 String alertCriteriaDanger = "N/A";
-                if (alert.isDangerEnabled() && (alert.getAlertType() == Alert.TYPE_THRESHOLD) && alert.isDangerAlertCriteriaValid()) {
+                if (alert.isDangerEnabled() && (alert.getAlertType() == Alert.TYPE_THRESHOLD) && alert.isDangerAlertCriteriaValid().isValid()) {
                     alertCriteriaDanger = alert.getHumanReadable_AlertCriteria_MinimumSampleCount(Alert.DANGER) + "<br><br>" + alert.getHumanReadable_AlertCriteria_ThresholdCriteria(Alert.DANGER);
                 }
-                else if (alert.isDangerEnabled() && (alert.getAlertType() == Alert.TYPE_AVAILABILITY) && alert.isDangerAlertCriteriaValid()) {
+                else if (alert.isDangerEnabled() && (alert.getAlertType() == Alert.TYPE_AVAILABILITY) && alert.isDangerAlertCriteriaValid().isValid()) {
                     alertCriteriaDanger = alert.getHumanReadable_AlertCriteria_AvailabilityCriteria(Alert.DANGER);
                 }
                 
@@ -342,8 +334,8 @@ public class AlertsReport extends HttpServlet {
                         .append("<td ").append(wordWrapClass).append(">").append(alertDescription).append("</td>\n")
                         .append("<td ").append(wordWrapClass).append(">").append(metricGroupNameAndLink).append("</td>\n")
                         .append("<td ").append(wordWrapClass).append(">").append(metricGroupTagsCsv.toString()).append("</td>\n")
-                        .append("<td ").append(wordWrapClass).append(">").append(metricGroupRegexes_StringBuilder.toString()).append("</td>\n")
-                        .append("<td ").append(wordWrapClass).append(">").append(metricGroupRegexesBlacklist_StringBuilder.toString()).append("</td>\n")
+                        .append("<td ").append(wordWrapClass).append(">").append(metricGroupMatchRegexes_StringBuilder.toString()).append("</td>\n")
+                        .append("<td ").append(wordWrapClass).append(">").append(metricGroupBlacklistRegexes_StringBuilder.toString()).append("</td>\n")
                         .append("<td ").append(wordWrapClass).append(">").append(alertCriteriaCaution).append("</td>\n")
                         .append("<td ").append(wordWrapClass).append(">").append(alertCriteriaDanger).append("</td>\n")
                         .append("<td ").append(wordWrapClass).append(">").append(alertResend).append("</td>\n")

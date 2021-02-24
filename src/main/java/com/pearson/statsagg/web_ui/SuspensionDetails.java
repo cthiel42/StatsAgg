@@ -142,6 +142,8 @@ public class SuspensionDetails extends HttpServlet {
             
             outputString.append("<b>ID</b> = ").append(suspension.getId()).append("<br>");
             
+            outputString.append("<br>");
+            
             outputString.append("<b>Description</b> = ");
             if (suspension.getDescription() != null) {
                 String encodedAlertDescription = StatsAggHtmlFramework.htmlEncode(suspension.getDescription());
@@ -166,7 +168,7 @@ public class SuspensionDetails extends HttpServlet {
             outputString.append("<br>");
             
             String isValid = "No";
-            if (Suspension.isValid(suspension)) isValid = "Yes";
+            if (Suspension.isValid(suspension).isValid()) isValid = "Yes";
             outputString.append("<b>Is suspension configuration valid?</b> = ").append(isValid).append("<br>");
             
             String isSuspensionInSuspensionTimeWindow = "No";

@@ -1,6 +1,12 @@
 package com.pearson.statsagg.database_objects.pagerduty_services;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
+import com.pearson.statsagg.database_objects.JsonOutputFieldNamingStrategy;
+import com.pearson.statsagg.utilities.core_utils.StackTrace;
 import com.pearson.statsagg.utilities.db_utils.DatabaseObject;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.slf4j.Logger;
@@ -61,11 +67,50 @@ public class PagerdutyService implements DatabaseObject<PagerdutyService> {
         
         pagerdutyServiceCopy.setId(pagerdutyService.getId());
         pagerdutyServiceCopy.setName(pagerdutyService.getName());
-        pagerdutyServiceCopy.setUppercaseName(pagerdutyService.getUppercaseName());
         pagerdutyServiceCopy.setDescription(pagerdutyService.getDescription());
         pagerdutyServiceCopy.setRoutingKey(pagerdutyService.getRoutingKey());
         
         return pagerdutyServiceCopy;
+    }
+    
+    public static JsonObject getJsonObject_ApiFriendly(PagerdutyService pagerdutyService) {
+        
+        if (pagerdutyService == null) {
+            return null;
+        }
+        
+        try {
+            Gson pagerdutyService_Gson = new GsonBuilder().setFieldNamingStrategy(new JsonOutputFieldNamingStrategy()).setPrettyPrinting().create();   
+            JsonElement pagerdutyService_JsonElement = pagerdutyService_Gson.toJsonTree(pagerdutyService);
+            JsonObject jsonObject = new Gson().toJsonTree(pagerdutyService_JsonElement).getAsJsonObject();
+            
+            return jsonObject;
+        }
+        catch (Exception e) {
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        
+    }
+    
+    public static String getJsonString_ApiFriendly(PagerdutyService pagerdutyService){
+        
+        if (pagerdutyService == null) {
+            return null;
+        }
+        
+        try {
+            JsonObject jsonObject = getJsonObject_ApiFriendly(pagerdutyService);
+            if (jsonObject == null) return null;
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();   
+            return gson.toJson(jsonObject);
+        }
+        catch (Exception e) {
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        
     }
     
     public Integer getId() {
@@ -82,14 +127,11 @@ public class PagerdutyService implements DatabaseObject<PagerdutyService> {
 
     public void setName(String name) {
         this.name_ = name;
+        if (name != null) this.uppercaseName_ = name.toUpperCase();
     }
     
     public String getUppercaseName() {
         return uppercaseName_;
-    }
-
-    public void setUppercaseName(String uppercaseName) {
-        this.uppercaseName_ = uppercaseName;
     }
     
     public String getDescription() {

@@ -136,6 +136,7 @@ public class Home extends HttpServlet {
             logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
         } 
         finally {
+            if (alerts == null) alerts = new ArrayList<>();
             DatabaseUtils.cleanup(connection);
         }
         
