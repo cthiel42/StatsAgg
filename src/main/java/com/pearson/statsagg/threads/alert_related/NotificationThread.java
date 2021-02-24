@@ -587,11 +587,63 @@ public class NotificationThread implements Runnable  {
         
     }
     
+<<<<<<< HEAD
+=======
+    public JsonObject buildPagerdutyAcknowledgeEvent() {
+        
+        if ((alert_ == null) || ((alertLevel_ != Alert.CAUTION) && (alertLevel_ != Alert.DANGER))) {
+            logger.error("Failed to create PagerDuty Acknowledge event.");
+            return null;
+        }
+
+        try {
+            String warningLevelString = null, pdSeverity = null;
+            if (alertLevel_ == Alert.CAUTION) {
+                warningLevelString = "Caution";
+                pdSeverity = "warning";
+            } 
+            else if (alertLevel_ == Alert.DANGER) {
+                warningLevelString = "Danger"; 
+                pdSeverity = "critical";
+            }
+
+            String summary = "StatsAgg Alert, " + warningLevelString + ", Name=\"" + alert_.getName() + "\"";
+
+            JsonObject json = new JsonObject();
+            json.addProperty("dedup_key", alert_.getId().toString());
+
+            JsonObject payload = new JsonObject();
+            json.add("payload",payload);
+            payload.addProperty("summary", summary);
+            payload.addProperty("source", "See Custom Details");
+            payload.addProperty("severity", pdSeverity);
+
+            json.addProperty("event_action", "acknowledge");
+
+            return json;
+        }
+        catch (Exception e) {
+            logger.error("Failed to create PagerDuty Acknowledge event.");
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        
+    }
+    
+>>>>>>> PearsonEducation-1.6
     public void sendPagerdutyEvent(String routingKey, JsonObject event) {
         
         if (routingKey == null) {
             String cleanSubject = StringUtilities.removeNewlinesFromString(event.getAsJsonObject("payload").get("summary").toString(), ' ');
             logger.error("Message=\"Failed to send PagerDuty event. No valid API keys.\", Subject=\"" + cleanSubject + "\"");
+<<<<<<< HEAD
+=======
+            return;
+        }
+        
+        if (event == null) {
+            logger.error("Message=\"Failed to send PagerDuty event. PagerDuty event missing.\"");
+>>>>>>> PearsonEducation-1.6
             return;
         }
         
