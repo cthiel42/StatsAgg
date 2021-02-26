@@ -12,7 +12,7 @@ COPY --from=build /tmp/statsagg/src/webapp /opt/StatsAgg/webapp
 COPY conf/example-application.ini /opt/StatsAgg/conf/application.ini
 COPY conf/logback-config.xml /opt/StatsAgg/conf/logback-config.xml
 COPY conf/example-flyway.properties /opt/StatsAgg/conf/flyway.properties
-COPY conf/docker-database.properties /opt/StatsAgg/conf/database.properties
+COPY conf/example-database.properties /opt/StatsAgg/conf/database.properties
 RUN mkdir /opt/StatsAgg/logs
 RUN adduser -system statsagg
 WORKDIR /opt/StatsAgg
@@ -25,7 +25,7 @@ EXPOSE 2003
 EXPOSE 4242
 EXPOSE 8086
 
-CMD ["java","-Xmx40g","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication","-XX:+AlwaysPreTouch","-XX:-UsePerfData","-Djava.net.preferIPv4Stack=true","-Djava.net.preferIPv4Addresses=true","-jar","StatsAgg.jar"]
+CMD ["java","-XX:InitialRAMPercentage=40","-XX:MaxRAMPercentage=60","-XX:MinRAMPercentage=25","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication","-XX:-UsePerfData","-Djava.net.preferIPv4Stack=true","-Djava.net.preferIPv4Addresses=true","-jar","StatsAgg.jar"]
 
 # docker build -t statsagg .
 # docker volume create statsagg-data
@@ -39,7 +39,7 @@ CMD ["java","-Xmx40g","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication",
 #     -p 2003:2003 \
 #     -p 4242:4242 \
 #     -p 8086:8086 \
-#     -v statsagg-data:/opt/derby \
+#     -v statsagg-data:/data \
 #     statsagg
 
 # Run with conf directory overwritten
@@ -52,5 +52,5 @@ CMD ["java","-Xmx40g","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication",
 #   -p 4242:4242 \
 #   -p 8086:8086 \
 #   --mount type=bind,src=/Users/uthiech/desktop/Forked_StatsAgg/StatsAgg/test_conf,target=/opt/StatsAgg/conf \
-#   -v statsagg-data:/opt/derby \
+#   -v statsagg-data:/data \
 #   statsagg
