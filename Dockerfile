@@ -18,13 +18,6 @@ RUN adduser -system statsagg
 WORKDIR /opt/StatsAgg
 RUN chown -R statsagg:adm .
 
-EXPOSE 8080
-EXPOSE 8125
-EXPOSE 22003
-EXPOSE 2003
-EXPOSE 4242
-EXPOSE 8086
-
 CMD ["java","-XX:InitialRAMPercentage=40","-XX:MaxRAMPercentage=60","-XX:MinRAMPercentage=25","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication","-XX:-UsePerfData","-Djava.net.preferIPv4Stack=true","-Djava.net.preferIPv4Addresses=true","-jar","StatsAgg.jar"]
 
 # docker build -t statsagg .
