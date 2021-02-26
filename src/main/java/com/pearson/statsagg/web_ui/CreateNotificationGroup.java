@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.pearson.statsagg.configuration.ApplicationConfiguration;
+import com.pearson.statsagg.database_objects.DatabaseObjectValidation;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import java.io.PrintWriter;
 import javax.servlet.http.HttpServlet;
@@ -191,7 +192,7 @@ public class CreateNotificationGroup extends HttpServlet {
         // email addresses
         htmlBody.append(
             "       <div class=\"form-group\">\n" +
-            "         <label class=\"label_small_margin\">Email addresses</label>\n" +
+            "         <label class=\"label_small_margin\">Email Addresses</label>\n" +
             "         <input class=\"form-control-statsagg\" placeholder=\"A csv-delimited list of email addresses\" name=\"EmailAddresses\" id=\"EmailAddresses\" ");
 
         if ((notificationGroup != null) && (notificationGroup.getEmailAddresses() != null)) {
@@ -205,8 +206,8 @@ public class CreateNotificationGroup extends HttpServlet {
         if (ApplicationConfiguration.isPagerdutyIntegrationEnabled()) {
             htmlBody.append(
                 "       <div class=\"form-group\" id=\"PagerDutyServiceName_Lookup\">\n" +
-                "         <label class=\"label_small_margin\">PagerDuty service name</label>\n" +
-                "         <input class=\"typeahead form-control-statsagg\" autocomplete=\"off\" placeholder=\"The exact PagerDuty service name to send alerts to.\" name=\"PagerDutyServiceName\" id=\"PagerDutyServiceName\" ");
+                "         <label class=\"label_small_margin\">PagerDuty Service Name</label>\n" +
+                "         <input class=\"typeahead form-control-statsagg\" autocomplete=\"off\" placeholder=\"The exact PagerDuty Service name to send alerts to.\" name=\"PagerDutyServiceName\" id=\"PagerDutyServiceName\" ");
 
             if ((notificationGroup != null) && (notificationGroup.getPagerdutyServiceId() != null)) {
                 PagerdutyService pagerdutyService = PagerdutyServicesDao.getPagerdutyService(DatabaseConnections.getConnection(), true, notificationGroup.getPagerdutyServiceId());
@@ -240,18 +241,34 @@ public class CreateNotificationGroup extends HttpServlet {
         boolean isValidPagerdutyServiceValue = isValidPagerdutyService(request);
         String oldName = getOldNotificationGroupName(request);
         
+        boolean isNotificationGroupCreatedByNotificationGroupTemplate = NotificationGroupsDao.isNotificationGroupCreatedByNotificationGroupTemplate(DatabaseConnections.getConnection(), true, notificationGroup, oldName);
+
         // insert/update/delete records in the database
-        if (!isValidPagerdutyServiceValue) {
-            returnString = "Failed to create or alter notification group. Reason=\"Invalid PagerDuty Service name.\"";
-        }
-        else if ((notificationGroup != null) && (notificationGroup.getName() != null)) {
-            returnString = NotificationGroupsDaoWrapper.alterRecordInDatabase(notificationGroup, oldName).getReturnString();
-        }
-        else {
-            returnString = "Failed to create or alter notification group. Reason=\"Field validation failed.\"";
+        if (notificationGroup == null) {
+            returnString = "Failed to create or alter notification group. Reason=\"One or more invalid notification group fields detected\".";
+            logger.warn(returnString);
+        } 
+        else if (isNotificationGroupCreatedByNotificationGroupTemplate) {
+            returnString = "Failed to create or alter notification group. Reason=\"Cannot alter a notification group that was created by a notification group template\".";
             logger.warn(returnString);
         }
-        
+        else if (!isValidPagerdutyServiceValue) {
+            returnString = "Failed to create or alter notification group. Reason=\"Invalid PagerDuty service name.\"";
+            logger.warn(returnString);
+        }
+        else {
+            DatabaseObjectValidation databaseObjectValidation = NotificationGroup.isValid(notificationGroup);
+
+            if (!databaseObjectValidation.isValid()) {
+                returnString = "Failed to create or alter notification group. Reason=\"" + databaseObjectValidation.getReason() + "\".";
+                logger.warn(returnString);
+            }
+            else {
+                NotificationGroupsDaoWrapper notificationGroupsDaoWrapper = NotificationGroupsDaoWrapper.alterRecordInDatabase(notificationGroup, oldName);
+                returnString = notificationGroupsDaoWrapper.getReturnString();
+            }
+        }
+               
         return returnString;
     }
     

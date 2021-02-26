@@ -1,12 +1,13 @@
 package com.pearson.statsagg.web_ui;
 
+import com.pearson.statsagg.configuration.ApplicationConfiguration;
+import com.pearson.statsagg.database_objects.notification_group_templates.NotificationGroupTemplate;
+import com.pearson.statsagg.database_objects.notification_group_templates.NotificationGroupTemplatesDao;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import java.io.PrintWriter;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import com.pearson.statsagg.database_objects.metric_group_templates.MetricGroupTemplate;
-import com.pearson.statsagg.database_objects.metric_group_templates.MetricGroupTemplatesDao;
 import com.pearson.statsagg.database_objects.variable_set_list.VariableSetList;
 import com.pearson.statsagg.database_objects.variable_set_list.VariableSetListsDao;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
@@ -19,11 +20,11 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Jeffrey Schmidt
  */
-public class MetricGroupTemplateDetails extends HttpServlet {
+public class NotificationGroupTemplateDetails extends HttpServlet {
 
-    private static final Logger logger = LoggerFactory.getLogger(MetricGroupTemplateDetails.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(NotificationGroupTemplateDetails.class.getName());
     
-    public static final String PAGE_NAME = "Metric Group Template Details";
+    public static final String PAGE_NAME = "Notification Group Template Details";
     
     /**
      * Handles the HTTP <code>GET</code> method.
@@ -76,7 +77,7 @@ public class MetricGroupTemplateDetails extends HttpServlet {
     
         String name = request.getParameter("Name");
         boolean excludeNavbar = StringUtilities.isStringValueBooleanTrue(request.getParameter("ExcludeNavbar"));
-        String metricGroupTemplateDetails = getMetricGroupTemplateDetailsString(name, excludeNavbar);
+        String notificationGroupTemplateDetails = getNotificationGroupTemplateDetailsString(name, excludeNavbar);
                 
         try {  
             StringBuilder htmlBuilder = new StringBuilder();
@@ -92,7 +93,7 @@ public class MetricGroupTemplateDetails extends HttpServlet {
             "      <div class=\"pull-left content-header-h2-min-width-statsagg\"> <h2> " + PAGE_NAME + " </h2> </div>\n" +
             "    </div> " +
             "    <div class=\"statsagg_force_word_wrap\">" +
-            metricGroupTemplateDetails +
+            notificationGroupTemplateDetails +
             "    </div>\n" +
             "  </div>\n" +
             "</div>\n",
@@ -116,29 +117,29 @@ public class MetricGroupTemplateDetails extends HttpServlet {
         
     }
 
-    private String getMetricGroupTemplateDetailsString(String metricGroupTemplateName, boolean excludeNavbar) {
+    private String getNotificationGroupTemplateDetailsString(String notificationGroupTemplateName, boolean excludeNavbar) {
         
-        if (metricGroupTemplateName == null) {
-            return "<b>No metric group template specified</b>";
+        if (notificationGroupTemplateName == null) {
+            return "<b>No notification group template specified</b>";
         }
         
-        MetricGroupTemplate metricGroupTemplate = MetricGroupTemplatesDao.getMetricGroupTemplate(DatabaseConnections.getConnection(), true, metricGroupTemplateName);
+        NotificationGroupTemplate notificationGroupTemplate = NotificationGroupTemplatesDao.getNotificationGroupTemplate(DatabaseConnections.getConnection(), true, notificationGroupTemplateName);
         
-        if (metricGroupTemplate == null) {
-            return "<b>Metric group template not found</b>";
+        if (notificationGroupTemplate == null) {
+            return "<b>Notification group template not found</b>";
         }
-        
+
         StringBuilder outputString = new StringBuilder();
 
         VariableSetList variableSetList = null;
-        if (metricGroupTemplate.getVariableSetListId() != null) variableSetList = VariableSetListsDao.getVariableSetList(DatabaseConnections.getConnection(), true, metricGroupTemplate.getVariableSetListId());
+        if (notificationGroupTemplate.getVariableSetListId() != null) variableSetList = VariableSetListsDao.getVariableSetList(DatabaseConnections.getConnection(), true, notificationGroupTemplate.getVariableSetListId());
 
         outputString.append("<b>Name:</b> ");
-        if (metricGroupTemplate.getName() != null) outputString.append(StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getName())).append("<br>");
+        if (notificationGroupTemplate.getName() != null) outputString.append(StatsAggHtmlFramework.htmlEncode(notificationGroupTemplate.getName())).append("<br>");
         else outputString.append("N/A <br>");
 
         outputString.append("<b>ID:</b> ");
-        if (metricGroupTemplate.getName() != null) outputString.append(metricGroupTemplate.getId()).append("<br>");
+        if (notificationGroupTemplate.getName() != null) outputString.append(notificationGroupTemplate.getId()).append("<br>");
         else outputString.append("N/A <br>");
 
         outputString.append("<b>Variable Set List:</b> ");
@@ -150,44 +151,27 @@ public class MetricGroupTemplateDetails extends HttpServlet {
 
         outputString.append("<br>");
 
-        outputString.append("<b>Metric Group Name Variable:</b> ").append(StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getMetricGroupNameVariable())).append("<br>");
+        outputString.append("<b>Notification Group Name Variable:</b> ");
+        outputString.append(StatsAggHtmlFramework.htmlEncode(notificationGroupTemplate.getNotificationGroupNameVariable())).append("<br>");
+
+        outputString.append("<b>Email Addresses Variable:</b> ");
+        if ((notificationGroupTemplate.getEmailAddressesVariable() != null) && !notificationGroupTemplate.getEmailAddressesVariable().isEmpty()) {
+            outputString.append(StatsAggHtmlFramework.htmlEncode(notificationGroupTemplate.getEmailAddressesVariable())).append("<br>");
+        }
+        else outputString.append("<br>");
+
+        if (ApplicationConfiguration.isPagerdutyIntegrationEnabled()) {
+            outputString.append("<b>PagerDuty Service Name Variable:</b> ");
+            if ((notificationGroupTemplate.getPagerdutyServiceNameVariable() != null) && !notificationGroupTemplate.getPagerdutyServiceNameVariable().isEmpty()) {
+                outputString.append(StatsAggHtmlFramework.htmlEncode(notificationGroupTemplate.getPagerdutyServiceNameVariable())).append("<br>");
+            }
+            else outputString.append("<br>");
+        }
 
         outputString.append("<br>");
-
-        outputString.append("<b>Description Variable:</b>");
-        if ((metricGroupTemplate.getDescriptionVariable() != null) && !metricGroupTemplate.getDescriptionVariable().isBlank()) {
-            outputString.append("<br>");
-            String encodedMetricGroupDescriptionVariable = StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getDescriptionVariable());
-            outputString.append(encodedMetricGroupDescriptionVariable.replaceAll("\n", "<br>")).append("<br><br>");
-        }
-        else outputString.append("<br><br>");
-
-        outputString.append("<b>Match Regexes Variable:</b>");
-        if ((metricGroupTemplate.getMatchRegexesVariable() != null) && !metricGroupTemplate.getMatchRegexesVariable().isBlank()) {
-            outputString.append("<br>");
-            String encodedMatchRegexesVariable = StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getMatchRegexesVariable());
-            outputString.append(encodedMatchRegexesVariable.replaceAll("\n", "<br>")).append("<br><br>");
-        }
-        else outputString.append("<br><br>");
-
-        outputString.append("<b>Blacklist Regexes Variable:</b>");
-        if ((metricGroupTemplate.getBlacklistRegexesVariable() != null) && !metricGroupTemplate.getBlacklistRegexesVariable().isBlank()) {
-            outputString.append("<br>");
-            String encodedBlacklistRegexesVariable = StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getBlacklistRegexesVariable());
-            outputString.append(encodedBlacklistRegexesVariable.replaceAll("\n", "<br>")).append("<br><br>");
-        }
-        else outputString.append("<br><br>");
-
-        outputString.append("<b>Tags Variable:</b>");
-        if ((metricGroupTemplate.getTagsVariable() != null) && !metricGroupTemplate.getTagsVariable().isBlank()) {
-            outputString.append("<br>");
-            String encodedTagsVariable = StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getTagsVariable());
-            outputString.append(encodedTagsVariable.replaceAll("\n", "<br>")).append("<br><br>");
-        }
-        else outputString.append("<br><br>");
-
-        outputString.append("<b>Is marked for delete? : </b>");
-        if (metricGroupTemplate.isMarkedForDelete() != null) outputString.append(metricGroupTemplate.isMarkedForDelete()).append("<br>");
+        
+        outputString.append("<b>Is marked for delete? :</b> ");
+        if (notificationGroupTemplate.isMarkedForDelete() != null) outputString.append(notificationGroupTemplate.isMarkedForDelete()).append("<br>");
         else outputString.append("N/A <br>");
 
         return outputString.toString();

@@ -686,7 +686,7 @@ public class CreateAlertTemplate extends HttpServlet {
             "<div id=\"DangerNotificationGroupNameVariable_Div\">\n" +
             "  <div class=\"form-group\">\n" +
             "    <label class=\"label_small_margin\">Notification group name variable</label>\n" +
-            "    <button type=\"button\" id=\"DangerNotificationGroupNameVariable_Help\" class=\"btn btn-xs btn-circle btn-info pull-right\" data-toggle=\"popover\" data-placement=\"left\" data-content=\"The exact name of the notification group to send alerts to.\" style=\"margin-bottom: 1.5px;\">?</button> " + 
+            "    <button type=\"button\" id=\"DangerNotificationGroupNameVariable_Help\" class=\"btn btn-xs btn-circle btn-info pull-right\" data-toggle=\"popover\" data-placement=\"left\" data-content=\"A templated notification group name. Variable values are substituted using ```key```.\" style=\"margin-bottom: 1.5px;\">?</button> " + 
             "    <input class=\"form-control-statsagg\" name=\"DangerNotificationGroupNameVariable\" id=\"DangerNotificationGroupNameVariable\" ");
 
         if ((alertTemplate != null) && (alertTemplate.getDangerNotificationGroupNameVariable() != null)) {
@@ -701,7 +701,7 @@ public class CreateAlertTemplate extends HttpServlet {
             "<div id=\"DangerPositiveNotificationGroupNameVariable_Div\">\n" +
             "  <div class=\"form-group\">\n" +
             "    <label class=\"label_small_margin\">Positive notification group name variable</label>\n" +
-            "    <button type=\"button\" id=\"DangerPositiveNotificationGroupNameVariable_Help\" class=\"btn btn-xs btn-circle btn-info pull-right\" data-toggle=\"popover\" data-placement=\"left\" data-content=\"The exact name of the notification group to send positive alerts to.\" style=\"margin-bottom: 1.5px;\">?</button> " + 
+            "    <button type=\"button\" id=\"DangerPositiveNotificationGroupNameVariable_Help\" class=\"btn btn-xs btn-circle btn-info pull-right\" data-toggle=\"popover\" data-placement=\"left\" data-content=\"A templated notification group name. Variable values are substituted using ```key```.\" style=\"margin-bottom: 1.5px;\">?</button> " + 
             "    <input class=\"form-control-statsagg\" name=\"DangerPositiveNotificationGroupNameVariable\" id=\"DangerPositiveNotificationGroupNameVariable\" ");
 
         if ((alertTemplate != null) && (alertTemplate.getDangerPositiveNotificationGroupNameVariable() != null)) {
@@ -956,22 +956,7 @@ public class CreateAlertTemplate extends HttpServlet {
         String returnString;
         
         AlertTemplate alertTemplate = getAlertTemplateFromAlertTemplateParameters(request);
-        
-        String oldName = Common.getSingleParameterAsString(request, "Old_Name");
-        if (oldName == null) oldName = Common.getSingleParameterAsString(request, "old_name");
-        if (oldName == null) {
-            String id = Common.getSingleParameterAsString(request, "Id");
-            if (id == null) id = Common.getSingleParameterAsString(request, "id");
-            
-            if (id != null) {
-                try {
-                    Integer id_Integer = Integer.parseInt(id.trim());
-                    AlertTemplate oldAlertTemplate = AlertTemplatesDao.getAlertTemplate(DatabaseConnections.getConnection(), true, id_Integer);
-                    oldName = oldAlertTemplate.getName();
-                }
-                catch (Exception e){}
-            }
-        }
+        String oldName = getOldAlertTemplateName(request);
         
         if (alertTemplate == null) {
             returnString = "Failed to create or alter alert template. Reason=\"One or more invalid alert template fields detected\".";
@@ -997,6 +982,37 @@ public class CreateAlertTemplate extends HttpServlet {
         }
         
         return returnString;
+    }
+    
+    protected static String getOldAlertTemplateName(Object request) {
+        
+        try {
+            if (request == null) return null;
+
+            String oldName = Common.getSingleParameterAsString(request, "Old_Name");
+            if (oldName == null) oldName = Common.getSingleParameterAsString(request, "old_name");
+
+            if (oldName == null) {
+                String id = Common.getSingleParameterAsString(request, "Id");
+                if (id == null) id = Common.getSingleParameterAsString(request, "id");
+
+                if (id != null) {
+                    try {
+                        Integer id_Integer = Integer.parseInt(id.trim());
+                        AlertTemplate oldAlertTemplate = AlertTemplatesDao.getAlertTemplate(DatabaseConnections.getConnection(), true, id_Integer);
+                        oldName = oldAlertTemplate.getName();
+                    }
+                    catch (Exception e){}
+                }
+            }
+
+            return oldName;
+        }
+        catch (Exception e){
+            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            return null;
+        }
+        
     }
     
     private static AlertTemplate getAlertTemplateFromAlertTemplateParameters(Object request) {

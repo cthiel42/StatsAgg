@@ -4,16 +4,11 @@ import com.pearson.statsagg.database_objects.metric_group_templates.MetricGroupT
 import com.pearson.statsagg.database_objects.metric_group_templates.MetricGroupTemplatesDao;
 import com.pearson.statsagg.globals.DatabaseConnections;
 import java.io.PrintWriter;
-import java.util.List;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroup;
 import com.pearson.statsagg.database_objects.metric_groups.MetricGroupsDao;
-import com.pearson.statsagg.database_objects.metric_groups.MetricGroupRegex;
-import com.pearson.statsagg.database_objects.metric_groups.MetricGroupRegexesDao;
-import com.pearson.statsagg.database_objects.metric_groups.MetricGroupTag;
-import com.pearson.statsagg.database_objects.metric_groups.MetricGroupTagsDao;
 import com.pearson.statsagg.database_objects.variable_set.VariableSet;
 import com.pearson.statsagg.database_objects.variable_set.VariableSetsDao;
 import com.pearson.statsagg.utilities.core_utils.StackTrace;
@@ -147,16 +142,16 @@ public class MetricGroupDetails extends HttpServlet {
 
         StringBuilder outputString = new StringBuilder();
 
-        outputString.append("<b>Name</b> = ");
+        outputString.append("<b>Name:</b> ");
         if (metricGroup.getName() != null) outputString.append(StatsAggHtmlFramework.htmlEncode(metricGroup.getName())).append("<br>");
         else outputString.append("N/A <br>");
 
-        outputString.append("<b>ID</b> = ");
+        outputString.append("<b>ID:</b> ");
         if (metricGroup.getName() != null) outputString.append(metricGroup.getId()).append("<br>");
         else outputString.append("N/A <br>");
 
         if (metricGroupTemplate != null) {
-            outputString.append("<b>Metric Group Template</b> = ");
+            outputString.append("<b>Metric Group Template:</b> ");
             if (metricGroupTemplate.getName() != null) {
                 String metricGroupTemplateDetailsPopup = "<a class=\"iframe cboxElement\" href=\"MetricGroupTemplateDetails?ExcludeNavbar=true&amp;Name=" + StatsAggHtmlFramework.urlEncode(metricGroupTemplate.getName()) + "\">" + StatsAggHtmlFramework.htmlEncode(metricGroupTemplate.getName()) + "</a>";
                 outputString.append(metricGroupTemplateDetailsPopup).append("<br>");
@@ -165,7 +160,7 @@ public class MetricGroupDetails extends HttpServlet {
         }
 
         if (variableSet != null) {
-            outputString.append("<b>Variable Set</b> = ");
+            outputString.append("<b>Variable Set:</b> ");
             if (variableSet.getName() != null) {
                 String variableSetDetailsPopup = "<a class=\"iframe cboxElement\" href=\"VariableSetDetails?ExcludeNavbar=true&amp;Name=" + StatsAggHtmlFramework.urlEncode(variableSet.getName()) + "\">" + StatsAggHtmlFramework.htmlEncode(variableSet.getName()) + "</a>";
                 outputString.append(variableSetDetailsPopup).append("<br>");
@@ -175,8 +170,9 @@ public class MetricGroupDetails extends HttpServlet {
 
         outputString.append("<br>");
         
-        outputString.append("<b>Description</b> = ");
-        if (metricGroup.getDescription() != null) {
+        outputString.append("<b>Description:</b> ");
+        if ((metricGroup.getDescription() != null) && !metricGroup.getDescription().isBlank()) {
+            outputString.append("<br>");
             String encodedMetricGroupDescription = StatsAggHtmlFramework.htmlEncode(metricGroup.getDescription());
             outputString.append(encodedMetricGroupDescription.replaceAll("\n", "<br>")).append("<br><br>");
         }
@@ -186,7 +182,7 @@ public class MetricGroupDetails extends HttpServlet {
         if ((metricGroup.getMatchRegexes() != null) && !metricGroup.getMatchRegexes().isEmpty()) {
             int i = 1;
             for (String matchRegex : metricGroup.getMatchRegexes()) {
-                outputString.append("<b>Regex #").append(i).append("</b> = ").append(StatsAggHtmlFramework.htmlEncode(matchRegex)).append("<br>");
+                outputString.append("<b>Regex #").append(i).append(":</b> ").append(StatsAggHtmlFramework.htmlEncode(matchRegex)).append("<br>");
                 i++;
                 didOutputMatchRegex = true;
             }
@@ -198,7 +194,7 @@ public class MetricGroupDetails extends HttpServlet {
         if ((metricGroup.getBlacklistRegexes() != null) && !metricGroup.getBlacklistRegexes().isEmpty()) {
             int i = 1;
             for (String blacklistRegex : metricGroup.getBlacklistRegexes()) {
-                outputString.append("<b>Blacklist Regex #").append(i).append("</b> = ").append(StatsAggHtmlFramework.htmlEncode(blacklistRegex)).append("<br>");
+                outputString.append("<b>Blacklist Regex #").append(i).append(":</b> ").append(StatsAggHtmlFramework.htmlEncode(blacklistRegex)).append("<br>");
                 i++;
                 didOutputBlacklistRegex = true;
             }
@@ -211,19 +207,19 @@ public class MetricGroupDetails extends HttpServlet {
         if ((metricGroup.getTags() != null) && !metricGroup.getTags().isEmpty()) {
             int i = 1;
             for (String metricGroupTag : metricGroup.getTags()) {
-                outputString.append("<b>Tag #").append(i).append("</b> = ").append(StatsAggHtmlFramework.htmlEncode(metricGroupTag)).append("<br>");
+                outputString.append("<b>Tag #").append(i).append(":</b> ").append(StatsAggHtmlFramework.htmlEncode(metricGroupTag)).append("<br>");
                 i++;
             }
         }
 
         if ((metricGroup.getTags() != null) && !metricGroup.getTags().isEmpty()) outputString.append("<br>");
 
-        outputString.append("<b>Metric Key Associations</b> = ");            
+        outputString.append("<b>Metric Key Associations:</b> ");            
         String metricGroup_MetricKeyAssociations_Link = "<a class=\"iframe cboxElement\" href=\"MetricGroupMetricKeyAssociations?ExcludeNavbar=" + excludeNavbar + "&amp;Name=" + StatsAggHtmlFramework.urlEncode(metricGroup.getName()) + "\">" + StatsAggHtmlFramework.htmlEncode(metricGroup.getName()) + "</a>";
         outputString.append(metricGroup_MetricKeyAssociations_Link);  
 
         outputString.append("<br>");
-        outputString.append("<b>Alert Associations</b> = ");            
+        outputString.append("<b>Alert Associations:</b> ");            
         String metricGroup_AlertAssociations_Link = "<a class=\"iframe cboxElement\" href=\"MetricGroupAlertAssociations?ExcludeNavbar=" + excludeNavbar + "&amp;Name=" + StatsAggHtmlFramework.urlEncode(metricGroup.getName()) + "\">" + StatsAggHtmlFramework.htmlEncode(metricGroup.getName()) + "</a>";
         outputString.append(metricGroup_AlertAssociations_Link);  
 
