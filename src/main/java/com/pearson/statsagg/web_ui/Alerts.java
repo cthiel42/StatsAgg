@@ -650,33 +650,4 @@ public class Alerts extends HttpServlet {
         notificationThread.sendPagerdutyEvent(routingKey, event);
     }
     
-    protected static void sendPagerDutyAcknowledgeRequest(Integer alertId) {
-
-        if (!ApplicationConfiguration.isPagerdutyIntegrationEnabled()) return;
-
-        Alert alert = AlertsDao.getAlert(DatabaseConnections.getConnection(), true, alertId);
-        if (alert == null) return;
-
-        int alertLevel, notificationGroupId;
-        
-        if ((alert.isDangerAlertActive() != null) && alert.isDangerAlertActive() && (alert.getDangerNotificationGroupId() != null)) {
-            alertLevel = Alert.DANGER;
-            notificationGroupId = alert.getDangerNotificationGroupId();
-        } 
-        else if ((alert.isCautionAlertActive() != null) && alert.isCautionAlertActive() && (alert.getCautionNotificationGroupId() != null)) {
-            alertLevel = Alert.CAUTION;
-            notificationGroupId = alert.getCautionNotificationGroupId();
-        }
-        else {
-            return;
-        }
-
-        String routingKey = NotificationThread.getPagerdutyRoutingKeyForAlert(notificationGroupId);
-        if (routingKey == null) return;
-        
-        NotificationThread notificationThread = new NotificationThread(alert, alertLevel, new ArrayList<>(), new HashMap<>(), new HashMap<>(), false, false, "");
-        JsonObject event = notificationThread.buildPagerdutyAcknowledgeEvent();
-        notificationThread.sendPagerdutyEvent(routingKey, event);
-    }
-    
 }
