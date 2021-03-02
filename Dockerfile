@@ -18,32 +18,6 @@ RUN adduser -system statsagg
 WORKDIR /opt/StatsAgg
 RUN chown -R statsagg:adm .
 
-CMD ["java","-XX:InitialRAMPercentage=40","-XX:MaxRAMPercentage=60","-XX:MinRAMPercentage=25","-XX:MaxGCPauseMillis=5000","-XX:+UseStringDeduplication","-XX:-UsePerfData","-Djava.net.preferIPv4Stack=true","-Djava.net.preferIPv4Addresses=true","-jar","StatsAgg.jar"]
+ENV JAVA_ARGS ""
 
-# docker build -t statsagg .
-# docker volume create statsagg-data
-
-# Run with default configurations
-# docker run -d \
-#     --name statsagg \
-#     -p 8080:8080 \
-#     -p 8125:8125 \
-#     -p 22003:22003 \
-#     -p 2003:2003 \
-#     -p 4242:4242 \
-#     -p 8086:8086 \
-#     -v statsagg-data:/data \
-#     statsagg
-
-# Run with conf directory overwritten
-# docker run -it \
-#   --name statsagg \
-#   -p 8080:8080 \
-#   -p 8125:8125 \
-#   -p 22003:22003 \
-#   -p 2003:2003 \
-#   -p 4242:4242 \
-#   -p 8086:8086 \
-#   --mount type=bind,src=/Users/uthiech/desktop/Forked_StatsAgg/StatsAgg/test_conf,target=/opt/StatsAgg/conf \
-#   -v statsagg-data:/data \
-#   statsagg
+CMD ["sh","-c","java -XX:InitialRAMPercentage=40 -XX:MaxRAMPercentage=60 -XX:MinRAMPercentage=25 -XX:MaxGCPauseMillis=5000 -XX:+UseStringDeduplication -XX:-UsePerfData -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true $JAVA_ARGS -jar StatsAgg.jar"]

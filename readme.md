@@ -92,6 +92,45 @@ Detailed installation instructions can be found in the [StatsAgg user manual](./
 
 <br>
 
+## Running on Docker
+Build the docker image:
+`docker build -t statsagg:latest .`
+
+If using the Embedded Derby database, it is recommended to store the database in a volume for persistence:
+`docker volume create statsagg-data`
+
+Run the docker image with the default configuration
+````
+docker run -d \
+    --name statsagg \
+    -p 8080:8080 \
+    -p 8125:8125 \
+    -p 22003:22003 \
+    -p 2003:2003 \
+    -p 4242:4242 \
+    -p 8086:8086 \
+    -v statsagg-data:/data \
+    statsagg
+````
+
+For additional configuration, overwrite the default configirations by mounting a directory with the updated configuration files to `/opt/StatsAgg/conf`. Java command line arguments can also be passed using the JAVA_ARGS environment variable. See the below example:
+````
+docker run -d \
+  --name statsagg \
+  -p 8080:8080 \
+  -p 8125:8125 \
+  -p 22003:22003 \
+  -p 2003:2003 \
+  -p 4242:4242 \
+  -p 8086:8086 \
+  --mount type=bind,src=/Users/user/StatsAgg/updated_conf,target=/opt/StatsAgg/conf \
+  --env JAVA_ARGS="-XX:+AlwaysPreTouch -Dcom.sun.management.jmxremote=true" \
+  -v statsagg-data:/data \
+  statsagg
+````
+
+<br>
+
 ## Example programs/frameworks/etc that are compatible with StatsAgg
 * [Java Metrics](https://dropwizard.github.io/metrics)
 * [CollectD](https://collectd.org/)
